@@ -8,19 +8,21 @@ class Map:
         self.world = 300 # half-size of world
         self.road_width = 60
         self.inner_margin = self.world
+        self.stop_setback = 12
+        self.stop_thickness = 6
 
         # Colors
-        self.grass = "#2e7d32"
+        self.grass = "#808588"
         self.road = "black"
         self.lane = "white"
         self.stop_line = "red"
-        self.stop_setback = 12
-        self.stop_thickness = 6
 
         # Cartographer Turtle
         self.cartographer = turtle.Turtle(visible=False)
         self.cartographer.speed(0)
         self.cartographer.penup()
+
+        self.stoplines = {}
 
     def draw_rect(self, x1, y1, x2, y2, color):
         t = self.cartographer
@@ -61,25 +63,39 @@ class Map:
         self.draw_central_lane_dividers()
         self.draw_ring_lane_dividers()
 
+    def new_stopline(self, x, y, w, h, color):
+        t = turtle.Turtle()
+        t.hideturtle()
+        t.penup()
+        t.shape("square")
+        t.shapesize(stretch_wid=h / 20, stretch_len=w / 20)  # turtle square is 20x20
+        t.color(color)
+        t.speed(0)
+        t.goto(x, y)
+        t.showturtle()
+        return t
+
     def draw_central_stop_lines(self):
         rw = self.road_width
-        m = self.inner_margin
-        
-        d = self.stop_setback
+        h = rw / 2
+        s = self.stop_setback
         t = self.stop_thickness
 
-        h = rw / 2
-        inner = m - rw
+        # NB stop line
+        y = -(h + s + t / 2)
+        self.stoplines["NB"] = self.new_stopline(0, y, rw, t, "red")
 
-        # Central stop lines
-        y1 = -(rw/2 + d)
-        self.draw_rect(-rw/2, y1, rw/2, y1 + t, self.stop_line)
-        y2 = (rw/2 + d)
-        self.draw_rect(-rw/2, y2 - t, rw/2, y2, self.stop_line)
-        x1 = (rw/2 + d)
-        self.draw_rect(x1, -rw/2, x1 + t, rw/2, self.stop_line)
-        x2 = -(rw/2 + d)
-        self.draw_rect(x2 - t, -rw/2, x2, rw/2, self.stop_line)
+        # SB stop line
+        y = (h + s + t / 2)
+        self.stoplines["SB"] = self.new_stopline(0, y, rw, t, "red")
+
+        # WB stop line
+        x = (h + s + t / 2)
+        self.stoplines["WB"] = self.new_stopline(x, 0, t, rw, "red")
+
+        # EB stop line
+        x = -(h + s + t / 2)
+        self.stoplines["EB"] = self.new_stopline(x, 0, t, rw, "red")
 
     def draw_ring_stop_lines(self):
         rw = self.road_width
@@ -91,25 +107,107 @@ class Map:
         h = rw / 2
         inner = m - rw
 
-        # North
-        self.draw_rect(-(h + d), inner, -(h + d) - t, m, self.stop_line)
-        self.draw_rect( (h + d), inner,  (h + d) + t, m, self.stop_line)
-        self.draw_rect(-h, inner - d, h, inner - d - t, self.stop_line)
+        ring_height = (m - inner)  # thickness of the ring road band
 
-        # East
-        self.draw_rect(inner,  (h + d), m,  (h + d) + t, self.stop_line)
-        self.draw_rect(inner, -(h + d), m, -(h + d) - t, self.stop_line)
-        self.draw_rect(inner - d, -h, inner - d - t, h, self.stop_line)
+        # North ring stoplines
+        self.stoplines["RN_L"] = self.new_stopline(
+            x=-(h + d) - t / 2,
+            y=(inner + m) / 2,
+            w=t,
+            h=ring_height,
+            color="red"
+        )
 
-        # South
-        self.draw_rect(-(h + d), -m, -(h + d) - t, -inner, self.stop_line)
-        self.draw_rect( (h + d), -m,  (h + d) + t, -inner, self.stop_line)
-        self.draw_rect(-h, -inner + d, h, -inner + d + t, self.stop_line)
+        self.stoplines["RN_R"] = self.new_stopline(
+            x=(h + d) + t / 2,
+            y=(inner + m) / 2,
+            w=t,
+            h=ring_height,
+            color="red"
+        )
 
-        # West
-        self.draw_rect(-m,  (h + d), -inner,  (h + d) + t, self.stop_line)
-        self.draw_rect(-m, -(h + d), -inner, -(h + d) - t, self.stop_line)
-        self.draw_rect(-inner + d, -h, -inner + d + t, h, self.stop_line)
+        self.stoplines["RN_S"] = self.new_stopline(
+            x=0,
+            y=inner - d - t / 2,
+            w=rw,
+            h=t,
+            color="red"
+        )
+
+        # East ring stoplines
+        self.stoplines["RE_T"] = self.new_stopline(
+            x=(inner + m) / 2,
+            y=(h + d) + t / 2,
+            w=ring_height,
+            h=t,
+            color="red"
+        )
+
+        self.stoplines["RE_B"] = self.new_stopline(
+            x=(inner + m) / 2,
+            y=-(h + d) - t / 2,
+            w=ring_height,
+            h=t,
+            color="red"
+        )
+
+        self.stoplines["RE_S"] = self.new_stopline(
+            x=inner - d - t / 2,
+            y=0,
+            w=t,
+            h=rw,
+            color="red"
+        )
+
+        # South ring stoplines
+        self.stoplines["RS_L"] = self.new_stopline(
+            x=-(h + d) - t / 2,
+            y=-(inner + m) / 2,
+            w=t,
+            h=ring_height,
+            color="red"
+        )
+
+        self.stoplines["RS_R"] = self.new_stopline(
+            x=(h + d) + t / 2,
+            y=-(inner + m) / 2,
+            w=t,
+            h=ring_height,
+            color="red"
+        )
+
+        self.stoplines["RS_S"] = self.new_stopline(
+            x=0,
+            y=-inner + d + t / 2,
+            w=rw,
+            h=t,
+            color="red"
+        )
+
+        # West ring stoplines
+        self.stoplines["RW_T"] = self.new_stopline(
+            x=-(inner + m) / 2,
+            y=(h + d) + t / 2,
+            w=ring_height,
+            h=t,
+            color="red"
+        )
+
+        self.stoplines["RW_B"] = self.new_stopline(
+            x=-(inner + m) / 2,
+            y=-(h + d) - t / 2,
+            w=ring_height,
+            h=t,
+            color="red"
+        )
+
+        self.stoplines["RW_S"] = self.new_stopline(
+            x=-inner + d + t / 2,
+            y=0,
+            w=t,
+            h=rw,
+            color="red"
+        )
 
     def draw_line(self, x1, y1, x2, y2, color, width=2):
         t = self.cartographer
