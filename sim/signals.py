@@ -6,7 +6,7 @@ class SignalController:
         self.stoplines = stoplines
 
         # Timing (milliseconds)
-        self.green_time = 3000
+        self.green_time = 4000
         self.yellow_time = 1500
         self.extension_time = 2000
 
@@ -33,10 +33,10 @@ class SignalController:
                 ns = "red"
 
             for k in self.ns_keys:
-                self.stoplines[k].color(ns)
+                self.stoplines[k].fillcolor(ns)
 
             for k in self.ew_keys:
-                self.stoplines[k].color(ew)
+                self.stoplines[k].fillcolor(ew)
 
     def start(self):
         # Begin the cycle
@@ -97,8 +97,26 @@ class SignalController:
         self.priority_requested = False
         self.extension_used = False
 
-        self.apply_colours()
+        # Step 1: set the new phase to green first
+        self.apply_colours_green_approach_only()
+
+        # Step 2: shortly after, finish the rest
+        self.screen.ontimer(self.apply_colours, 30)
+
+        # Then schedule the next transition
         self.schedule_next()
+
+    def apply_colours_green_approach_only(self):
+        # Only recolour the side that is becoming green.
+        # This avoids a huge redraw spike.
+
+        if self.phase == "NS":
+            green_group = self.ns_keys
+        else:
+            green_group = self.ew_keys
+
+        for k in green_group:
+            self.stoplines[k].fillcolor("green")
 
     def get_colour(self, approach):
         return self.stoplines[approach].fillcolor()

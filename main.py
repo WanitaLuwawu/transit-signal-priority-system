@@ -1,6 +1,7 @@
 import turtle
 from sim.map import Map
 from sim.signals import SignalController
+from sim.bus import Bus
 
 def close_window():
     turtle.bye()
@@ -17,5 +18,8 @@ my_map.draw()
 
 controller = SignalController(screen, my_map.stoplines)
 controller.start()
+
+bus = Bus(screen, controller, my_map)
+bus.move()
 
 turtle.mainloop()

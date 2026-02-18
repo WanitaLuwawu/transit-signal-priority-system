@@ -1,18 +1,19 @@
 import turtle
 
+
 class Map:
     def __init__(self, screen):
         self.screen = screen
 
         # Geometry constants
-        self.world = 300 # half-size of world
+        self.world = 300  # half-size of world
         self.road_width = 60
         self.inner_margin = self.world
         self.stop_setback = 12
         self.stop_thickness = 6
 
         # Colors
-        self.grass = "#808588"
+        self.concrete = "#808588"
         self.road = "black"
         self.lane = "white"
         self.stop_line = "red"
@@ -23,6 +24,17 @@ class Map:
         self.cartographer.penup()
 
         self.stoplines = {}
+
+        # Derived geometry (used by Bus)
+        self.m = self.inner_margin
+        self.rw = self.road_width
+        self.h = self.rw / 2
+        self.inner = self.m - self.rw
+        self.ring_mid = self.inner + self.h
+
+        # Lane centers
+        self.ring_lane_offset = 15
+        self.central_lane_offset = 15
 
     def draw_rect(self, x1, y1, x2, y2, color):
         t = self.cartographer
@@ -45,18 +57,18 @@ class Map:
         rw = self.road_width
         m = self.inner_margin
 
-        # Grass background
-        self.draw_rect(-w, -w, w, w, self.grass)
+        # concrete background
+        self.draw_rect(-w, -w, w, w, self.concrete)
 
         # Outer ring road "donut"
         self.draw_rect(-w, -w, w, w, self.road)
-        self.draw_rect(-(w - rw), -(w - rw), (w - rw), (w - rw), self.grass)
+        self.draw_rect(-(w - rw), -(w - rw), (w - rw), (w - rw), self.concrete)
 
         # Central vertical road
-        self.draw_rect(-rw/2, -m, rw/2, m, self.road)
+        self.draw_rect(-rw / 2, -m, rw / 2, m, self.road)
 
         # Central horizontal road
-        self.draw_rect(-m, -rw/2, m, rw/2, self.road)
+        self.draw_rect(-m, -rw / 2, m, rw / 2, self.road)
 
         self.draw_central_stop_lines()
         self.draw_ring_stop_lines()
@@ -69,7 +81,7 @@ class Map:
         t.penup()
         t.shape("square")
         t.shapesize(stretch_wid=h / 20, stretch_len=w / 20)  # turtle square is 20x20
-        t.color(color)
+        t.fillcolor(color)
         t.speed(0)
         t.goto(x, y)
         t.showturtle()
@@ -81,7 +93,7 @@ class Map:
         s = self.stop_setback
         t = self.stop_thickness
 
-        # NB stop line
+        # NB stop line (northbound approaching center)
         y = -(h + s + t / 2)
         self.stoplines["NB"] = self.new_stopline(0, y, rw, t, "red")
 
@@ -224,15 +236,12 @@ class Map:
         t.color(color)
         t.width(width)
 
-        # total length
         dx = x2 - x1
         dy = y2 - y1
         dist = (dx ** 2 + dy ** 2) ** 0.5
-
         if dist == 0:
             return
 
-        # unit direction
         ux = dx / dist
         uy = dy / dist
 
@@ -263,14 +272,12 @@ class Map:
         d = self.stop_setback
         t = self.stop_thickness
 
-        iw = rw + d + t # intersection width
-        hiw = h + d + t # half intersection width
+        iw = rw + d + t
+        hiw = h + d + t
 
-        # Vertical road centerline (x = 0), split around the intersection square
         self.draw_dashed_line(0, -m + iw, 0, -hiw, self.lane, width=2)
         self.draw_dashed_line(0, hiw, 0, m - iw, self.lane, width=2)
 
-        # Horizontal road centerline (y = 0)
         self.draw_dashed_line(-m + iw, 0, -hiw, 0, self.lane, width=2)
         self.draw_dashed_line(hiw, 0, m - iw, 0, self.lane, width=2)
 
@@ -282,29 +289,20 @@ class Map:
         d = self.stop_setback
         t = self.stop_thickness
 
-        iw = rw + d + t  # intersection width
-        hiw = h + d + t  # half intersection width
+        iw = rw + d + t
+        hiw = h + d + t
 
         inner = m - rw
         ring_mid = inner + h
 
-        # Top segment (split around the central road opening)
         self.draw_dashed_line(-ring_mid, ring_mid, -hiw, ring_mid, self.lane, width=2)
         self.draw_dashed_line(hiw, ring_mid, ring_mid, ring_mid, self.lane, width=2)
 
-        # Bottom segment
         self.draw_dashed_line(-ring_mid, -ring_mid, -hiw, -ring_mid, self.lane, width=2)
         self.draw_dashed_line(hiw, -ring_mid, ring_mid, -ring_mid, self.lane, width=2)
 
-        # Right segment
         self.draw_dashed_line(ring_mid, -ring_mid, ring_mid, -hiw, self.lane, width=2)
         self.draw_dashed_line(ring_mid, hiw, ring_mid, ring_mid, self.lane, width=2)
 
-        # Left segment
         self.draw_dashed_line(-ring_mid, -ring_mid, -ring_mid, -hiw, self.lane, width=2)
         self.draw_dashed_line(-ring_mid, hiw, -ring_mid, ring_mid, self.lane, width=2)
-
-
-
-
-
