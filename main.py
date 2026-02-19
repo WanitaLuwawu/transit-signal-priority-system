@@ -19,7 +19,15 @@ my_map.draw()
 controller = SignalController(screen, my_map.stoplines)
 controller.start()
 
-bus = Bus(screen, controller, my_map)
+bus = Bus(screen,
+          controller,
+          my_map, lane="R"
+          # path=[my_map.grid["R"][1],
+          #     my_map.grid["R"][4],
+          #     my_map.grid["R"][5],
+          #     my_map.grid["R"][2]]
+          #
+          )
 bus.move()
 
 turtle.mainloop()

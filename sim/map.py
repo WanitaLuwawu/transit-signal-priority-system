@@ -32,6 +32,33 @@ class Map:
         self.inner = self.m - self.rw
         self.ring_mid = self.inner + self.h
 
+        rol = self.ring_mid + self.h / 2  # ring_outer_lane
+        ril = self.ring_mid - self.h / 2  # ring_inner_lane
+        lo = self.h / 2  # lane offset for central roads = 15
+
+        self.grid = {
+            "R": {1: (-rol, rol),
+                  2: (lo, rol),
+                  3: (rol, rol),
+                  4: (-rol, -lo),
+                  5: (lo, -lo),
+                  6: (rol, -lo),
+                  7: (-rol, -rol),
+                  8: (lo, -rol),
+                  9: (rol, -rol),
+                  },
+            "L": {1: (-ril, ril),
+                  2: (-lo, ril),
+                  3: (ril, ril),
+                  4: (-ril, lo),
+                  5: (-lo, lo),
+                  6: (ril, lo),
+                  7: (-ril, -ril),
+                  8: (-lo, -ril),
+                  9: (ril, -ril),
+                  }
+        }
+
         # Lane centers
         self.ring_lane_offset = 15
         self.central_lane_offset = 15
@@ -138,7 +165,7 @@ class Map:
             color="red"
         )
 
-        self.stoplines["RN_S"] = self.new_stopline(
+        self.stoplines["RN_C"] = self.new_stopline(
             x=0,
             y=inner - d - t / 2,
             w=rw,
@@ -163,7 +190,7 @@ class Map:
             color="red"
         )
 
-        self.stoplines["RE_S"] = self.new_stopline(
+        self.stoplines["RE_C"] = self.new_stopline(
             x=inner - d - t / 2,
             y=0,
             w=t,
@@ -188,7 +215,7 @@ class Map:
             color="red"
         )
 
-        self.stoplines["RS_S"] = self.new_stopline(
+        self.stoplines["RS_C"] = self.new_stopline(
             x=0,
             y=-inner + d + t / 2,
             w=rw,
@@ -213,7 +240,7 @@ class Map:
             color="red"
         )
 
-        self.stoplines["RW_S"] = self.new_stopline(
+        self.stoplines["RW_C"] = self.new_stopline(
             x=-inner + d + t / 2,
             y=0,
             w=t,
@@ -304,5 +331,6 @@ class Map:
         self.draw_dashed_line(ring_mid, -ring_mid, ring_mid, -hiw, self.lane, width=2)
         self.draw_dashed_line(ring_mid, hiw, ring_mid, ring_mid, self.lane, width=2)
 
-        self.draw_dashed_line(-ring_mid, -ring_mid, -ring_mid, -hiw, self.lane, width=2)
-        self.draw_dashed_line(-ring_mid, hiw, -ring_mid, ring_mid, self.lane, width=2)
+        self.draw_dashed_line(-ring_mid, ring_mid, -ring_mid, hiw, self.lane, width=2)
+        self.draw_dashed_line( -ring_mid, -hiw, -ring_mid, -ring_mid, self.lane, width=2)
+

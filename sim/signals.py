@@ -6,7 +6,7 @@ class SignalController:
         self.stoplines = stoplines
 
         # Timing (milliseconds)
-        self.green_time = 4000
+        self.green_time = 3000
         self.yellow_time = 1500
         self.extension_time = 2000
 
@@ -17,8 +17,8 @@ class SignalController:
         self.extension_used = False
 
         # Stopline groups by phase
-        self.ns_keys = ("NB", "SB", "RN_L", "RN_R", "RN_S", "RS_L", "RS_R", "RS_S")
-        self.ew_keys = ("EB", "WB", "RE_T", "RE_B", "RE_S", "RW_T", "RW_B", "RW_S")
+        self.ns_keys = ("NB", "SB", "RN_L", "RN_R", "RN_C", "RS_L", "RS_R", "RS_C")
+        self.ew_keys = ("EB", "WB", "RE_T", "RE_B", "RE_C", "RW_T", "RW_B", "RW_C")
         self.ns_set = set(self.ns_keys)
         self.ew_set = set(self.ew_keys)
 
