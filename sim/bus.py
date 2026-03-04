@@ -166,13 +166,14 @@ class Bus:
         dx = tx - x
         dy = ty - y
 
-        if abs(dx) < self.go_speed and abs(dy) < self.go_speed:
+        dist_to_target = (dx ** 2 + dy ** 2) ** 0.5
+
+        if dist_to_target < self.go_speed:
             bus.goto(tx, ty)
             bus.target_index = (bus.target_index + 1) % len(bus.path)
             self.current_leg_index = (self.current_leg_index + 1) % len(self.approaches)
             self.current_stop_index = 0
             self.priority_requested = False
-            self.screen.ontimer(self.move, 20)
             return
 
         if abs(dx) >= self.go_speed:
