@@ -24,23 +24,34 @@ class SignalController:
 
         self.apply_colours()
 
-    def apply_colours(self):
-            if self.phase == "NS":
-                ns = "green" if self.state == "GREEN" else "yellow"
-                ew = "red"
-            else:
-                ew = "green" if self.state == "GREEN" else "yellow"
-                ns = "red"
-
-            for k in self.ns_keys:
-                self.stoplines[k].fillcolor(ns)
-
-            for k in self.ew_keys:
-                self.stoplines[k].fillcolor(ew)
-
     def start(self):
-        # Begin the cycle
-        self.schedule_next()
+        self.remaining = self.green_time
+        self.tick()
+
+    def tick(self):
+        if self.remaining > 0:
+            self.remaining -= 100
+            # Apply extension immediately when requested
+            if self.priority_requested and not self.extension_used:
+                self.remaining += self.extension_time
+                self.extension_used = True
+            self.screen.ontimer(self.tick, 100)
+        else:
+            self.to_yellow()
+
+    def schedule_next(self):
+        if self.state == "YELLOW":
+            self.screen.ontimer(self.swap_phase, self.yellow_time)
+
+    def swap_phase(self):
+        self.phase = "EW" if self.phase == "NS" else "NS"
+        self.state = "GREEN"
+        self.priority_requested = False
+        self.extension_used = False
+        self.remaining = self.green_time
+        self.apply_colours_green_approach_only()
+        self.screen.ontimer(self.apply_colours, 25)
+        self.tick()
 
     def request_priority(self, approach):
         # Only allow requests during GREEN
@@ -70,41 +81,26 @@ class SignalController:
             return "EW"
         return None
 
-    def schedule_next(self):
-        # Decide how long until the next transition
-        if self.state == "GREEN":
-            delay = self.green_time
-
-            # Green extension: apply at most once per green
-            if self.priority_requested and not self.extension_used:
-                delay += self.extension_time
-                self.extension_used = True
-
-            self.screen.ontimer(self.to_yellow, delay)
-
-        elif self.state == "YELLOW":
-            self.screen.ontimer(self.swap_phase, self.yellow_time)
-
     def to_yellow(self):
         self.state = "YELLOW"
         self.apply_colours()
         self.schedule_next()
 
-    def swap_phase(self):
-        # Move to next phase and reset extension/request flags
-        self.phase = "EW" if self.phase == "NS" else "NS"
-        self.state = "GREEN"
-        self.priority_requested = False
-        self.extension_used = False
+    def apply_colours(self):
+            if self.phase == "NS":
+                ns = "green" if self.state == "GREEN" else "yellow"
+                ew = "red"
+            else:
+                ew = "green" if self.state == "GREEN" else "yellow"
+                ns = "red"
 
-        # Step 1: set the new phase to green first
-        self.apply_colours_green_approach_only()
+            if ns != "green":
+                for k in self.ns_keys:
+                    self.stoplines[k].fillcolor(ns)
 
-        # Step 2: shortly after, finish the rest
-        self.screen.ontimer(self.apply_colours, 30)
-
-        # Then schedule the next transition
-        self.schedule_next()
+            if ew != "green":
+                for k in self.ew_keys:
+                        self.stoplines[k].fillcolor(ew)
 
     def apply_colours_green_approach_only(self):
         # Only recolour the side that is becoming green.

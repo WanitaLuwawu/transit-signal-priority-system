@@ -1,7 +1,7 @@
 import turtle
 
 class Bus:
-    def __init__(self, screen, controller, map, lane="R", path=None):
+    def __init__(self, screen, controller, map, lane="R", path=None, is_late=False, delay=0, color="blue"):
         self.screen = screen
         self.controller = controller
 
@@ -27,7 +27,9 @@ class Bus:
         self.current_stop_index = 0
 
         # Priority
-        self.is_late = False
+        self.is_late = is_late
+        self.active = delay == 0
+        self.delay = delay
         self.priority_requested = False
 
         # Zones
@@ -35,15 +37,17 @@ class Bus:
         self.stop_zone = 20
 
         g = map.grid[lane]
-        self.chassis = self.new_bus(path or [g[7], g[9], g[3], g[1]])
+        self.chassis = self.new_bus(path or [g[7], g[9], g[3], g[1]], color)
         self.approaches = self.infer_approaches()
 
-    def new_bus(self, path):
+        self.color = color
+
+    def new_bus(self, path, color):
         bus = turtle.Turtle()
         bus.hideturtle()
         bus.shape("square")
         bus.shapesize(stretch_wid=0.6, stretch_len=1.2)
-        bus.color("blue")
+        bus.color(color)
         bus.penup()
         bus.path = path
         bus.goto(bus.path[0])
@@ -77,7 +81,25 @@ class Bus:
             leg_stops.sort(key=lambda s: s[0])
 
             filtered = [(d, key) for d, key in leg_stops if d > self.rw]
-            approaches.append([key for _, key in filtered])
+
+            dx = x2 - x1
+            dy = y2 - y1
+
+            chosen = []
+
+            for _, key in filtered:
+                if horizontal:
+                    if dx > 0 and (key.endswith("_L") or key.endswith("_C") or key == "EB"):
+                        chosen.append(key)
+                    elif dx < 0 and (key.endswith("_R") or key.endswith("_C") or key == "WB"):
+                        chosen.append(key)
+                else:
+                    if dy > 0 and (key.endswith("_B") or key.endswith("_C") or key == "NB"):
+                        chosen.append(key)
+                    elif dy < 0 and (key.endswith("_T") or key.endswith("_C") or key == "SB"):
+                        chosen.append(key)
+
+            approaches.append(chosen)
 
         return approaches
 
@@ -116,6 +138,12 @@ class Bus:
                 self.priority_requested = True
 
     def move(self):
+        if not self.active:
+            self.delay -= 20
+            if self.delay <= 0:
+                self.active = True
+            return
+
         bus = self.chassis
         tx, ty = bus.path[bus.target_index]
         x, y = bus.position()
@@ -153,4 +181,3 @@ class Bus:
             bus.setheading(90 if dy > 0 else 270)
 
         bus.forward(self.step)
-        self.screen.ontimer(self.move, 20)
