@@ -45,8 +45,6 @@ This allows the effect of signal priority on delay recovery to be visualized dir
 
 ## Example Simulation
 
-## Example Simulation
-
 <table>
 <tr>
 <td align="center">
