@@ -46,10 +46,14 @@ class Bus:
                            # 7-8-9
 
         # Bus Turtle shown on Screen
-        self.chassis = self.new_bus(path or [g[7], g[9], g[3], g[1]], color)
+        raw_path = path or [g[7], g[9], g[3], g[1]]
+        closed_path = self.close_loop(raw_path, g)
+        self.chassis = self.new_bus(closed_path, color)
 
         # Approaches/Stoplines on the defined path
         self.approaches = self.infer_approaches()
+
+        self.distance_travelled = 0
 
     def new_bus(self, path, color):
         bus = turtle.Turtle()                           # bus chassis
@@ -63,6 +67,60 @@ class Bus:
         bus.target_index = 1                            # the first target node is the second node on the path
         bus.showturtle()
         return bus
+
+    def close_loop(self, path, grid):
+        # ring road nodes in clockwise order
+        ring = [grid[1], grid[2], grid[3], grid[6], grid[9], grid[8], grid[7], grid[4]]
+        n = len(ring)
+
+        # find the first and last ring nodes in the path
+        first_ring_node = next((p for p in path if p in ring), None)
+        last_ring_node = next((p for p in reversed(path) if p in ring), None)
+
+        # can't close the loop if no ring nodes are found
+        if last_ring_node is None or first_ring_node is None:
+            return path
+        # already closed if the path starts and ends on the same ring node
+        if last_ring_node == first_ring_node:
+            return path
+
+        # index of the last ring node in the ring (return journey starts here)
+        si = ring.index(last_ring_node)
+        # index of the first ring node in the ring (return journey ends here)
+        ei = ring.index(first_ring_node)
+
+        # extract only the ring nodes from the path, preserving order
+        ring_nodes_in_path = [p for p in path if p in ring]
+
+        # vote on direction by checking each consecutive ring node pair
+        cw_votes = 0
+        ccw_votes = 0
+        for i in range(len(ring_nodes_in_path) - 1):
+            i1 = ring.index(ring_nodes_in_path[i])      # ring index of current node
+            i2 = ring.index(ring_nodes_in_path[i + 1])  # ring index of next node
+            cw_steps = (i2 - i1) % n  # steps needed to reach i2 going clockwise
+            ccw_steps = (i1 - i2) % n # steps needed to reach i2 going counter-clockwise
+            if cw_steps <= ccw_steps:
+                cw_votes += 1  # this pair suggests clockwise travel
+            else:
+                ccw_votes += 1 # this pair suggests counter-clockwise travel
+
+        # the majority vote determines the overall direction
+        going_cw = cw_votes >= ccw_votes
+
+        # build the return leg indices by stepping from si in the inferred direction
+        if going_cw:
+            indices = [(si + i) % n for i in range(1, n)] # step forward through ring
+        else:
+            indices = [(si - i) % n for i in range(1, n)] # step backward through ring
+
+        # convert indices back to coordinates
+        route = [ring[i] for i in indices]
+        if first_ring_node in route:
+            return_leg = route[:route.index(first_ring_node)]
+            return path + return_leg
+
+        return path # return original path if something went wrong
 
     def infer_approaches(self):
         path = self.chassis.path               # bus path
@@ -235,4 +293,5 @@ class Bus:
             bus.setheading(90 if dy > 0 else 270) # north or south
 
         # advance the bus
+        self.distance_travelled += self.step
         bus.forward(self.step)

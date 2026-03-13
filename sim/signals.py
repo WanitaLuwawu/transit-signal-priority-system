@@ -30,7 +30,7 @@ class SignalController:
         self.printer = turtle.Turtle()
         self.printer.hideturtle()
         self.printer.penup()
-        self.printer.goto(-300, 320)
+        self.printer.goto(220, 320)
 
     def start(self):
         self.remaining = self.green_time # phase timer set to green_time
@@ -89,6 +89,23 @@ class SignalController:
             return True
 
         return False
+
+    # check whether the current stoplight would be red without TSP
+    def would_be_red_without_tsp(self, approach, time):
+        phase_length = self.green_time + self.yellow_time # length of one phase
+        cycle_length = phase_length * 2                   # length of one cycle = phase length * number of phases
+
+        t = time % cycle_length # based on the current bus time,
+                                # which phase would the light be in?
+
+        # determine which phase would naturally be active (i.e. "GREEN" or "YELLOW")
+        natural_phase = "NS" if t < phase_length else "EW" # "NS" is the first phase in a cycle
+
+        # get the light on the late bus's approach
+        approach_phase = self.approach_phase(approach)
+
+        # if the light is not currently active when it would have been without TSP, return False
+        return approach_phase != natural_phase
 
     # determine the phase to which each stopline/approach belongs
     def approach_phase(self, approach):
