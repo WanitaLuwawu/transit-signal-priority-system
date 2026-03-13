@@ -26,6 +26,8 @@ class SignalController:
 
         self.apply_colors()
 
+        self.running = False
+
         # Printer Turtle for displaying priority state
         self.printer = turtle.Turtle()
         self.printer.hideturtle()
@@ -33,10 +35,24 @@ class SignalController:
         self.printer.goto(220, 320)
 
     def start(self):
+        self.running = True
         self.remaining = self.green_time # phase timer set to green_time
         self.tick()
 
+    def reset(self):
+        self.running = False
+        self.phase = "NS"
+        self.state = "GREEN"
+        self.priority_requested = False
+        self.extension_used = False
+        self.remaining = self.green_time
+        self.printer.clear()
+        self.apply_colors()
+
     def tick(self):
+        if not self.running:
+            return
+
         if self.remaining > 0: # while the current phase is green...
             # check whether conditions for green light extension have been met:
             # 1. priority has been requested

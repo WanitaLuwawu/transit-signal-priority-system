@@ -295,3 +295,13 @@ class Bus:
         # advance the bus
         self.distance_travelled += self.step
         bus.forward(self.step)
+
+    def reset(self):
+        self.active = False
+        self.chassis.hideturtle()
+        self.chassis.goto(self.chassis.path[0])
+        self.chassis.target_index = 1
+        self.current_leg_index = 0
+        self.current_stop_index = 0
+        self.priority_requested = False
+        self.chassis.showturtle()
