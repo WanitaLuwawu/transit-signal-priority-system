@@ -195,7 +195,7 @@ delay_slider = tk.Scale(
     orient="horizontal",
     label="Late Bus Delay (ms)"
 )
-delay_slider.set(3000)
+delay_slider.set(10000)
 delay_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 # Results Table

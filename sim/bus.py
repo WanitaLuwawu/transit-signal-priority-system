@@ -95,15 +95,15 @@ class Bus:
         # vote on direction by checking each consecutive ring node pair
         cw_votes = 0
         ccw_votes = 0
-        for i in range(len(ring_nodes_in_path) - 1):
-            i1 = ring.index(ring_nodes_in_path[i])      # ring index of current node
-            i2 = ring.index(ring_nodes_in_path[i + 1])  # ring index of next node
-            cw_steps = (i2 - i1) % n  # steps needed to reach i2 going clockwise
-            ccw_steps = (i1 - i2) % n # steps needed to reach i2 going counter-clockwise
+        for i in range(len(ring_nodes_in_path)):  # include last node
+            i1 = ring.index(ring_nodes_in_path[i])
+            i2 = ring.index(ring_nodes_in_path[(i + 1) % len(ring_nodes_in_path)])  # wrap to first node
+            cw_steps = (i2 - i1) % n
+            ccw_steps = (i1 - i2) % n
             if cw_steps <= ccw_steps:
-                cw_votes += 1  # this pair suggests clockwise travel
+                cw_votes += 1
             else:
-                ccw_votes += 1 # this pair suggests counter-clockwise travel
+                ccw_votes += 1
 
         # the majority vote determines the overall direction
         going_cw = cw_votes >= ccw_votes
@@ -187,10 +187,7 @@ class Bus:
                         chosen.append(key)
 
             # store the approaches associated with this path segment
-            if chosen:
-                approaches.append(chosen)
-            else:
-                approaches.append(approaches[-1] if approaches else [])
+            approaches.append(chosen)
 
         # return list of approaches for the full route
         return approaches
