@@ -187,7 +187,10 @@ class Bus:
                         chosen.append(key)
 
             # store the approaches associated with this path segment
-            approaches.append(chosen)
+            if chosen:
+                approaches.append(chosen)
+            else:
+                approaches.append(approaches[-1] if approaches else [])
 
         # return list of approaches for the full route
         return approaches
@@ -304,4 +307,5 @@ class Bus:
         self.current_leg_index = 0
         self.current_stop_index = 0
         self.priority_requested = False
+        self.is_late=True
         self.chassis.showturtle()
