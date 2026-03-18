@@ -122,6 +122,28 @@ class Bus:
 
         return path # return original path if something went wrong
 
+    def get_approach_at_distance(self, total_dist):
+        path = self.chassis.path
+
+        leg_lengths = []
+        for i in range(len(path)):
+            p1 = path[i]
+            p2 = path[(i + 1) % len(path)]
+            length = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
+            leg_lengths.append(length)
+
+        full_loop_length = sum(leg_lengths)
+        distance_in_loop = total_dist % full_loop_length
+
+        running_dist = 0
+        for i, leg_len in enumerate(leg_lengths):
+            if running_dist <= distance_in_loop < running_dist + leg_len:
+                leg_approaches = self.approaches[i]
+                return leg_approaches[0] if leg_approaches else None
+            running_dist += leg_len
+
+        return None
+
     def infer_approaches(self):
         path = self.chassis.path               # bus path
         approaches = []                        # empty list of approaches
@@ -196,6 +218,39 @@ class Bus:
     def stop_point_for(self, key):
         t = self.stoplines[key]
         return t.xcor(), t.ycor()
+
+    def get_stopline_distance(self, key, total_dist=None):
+        path = self.chassis.path
+
+        # compute full loop length
+        loop_length = 0
+        for i in range(len(path)):
+            p1 = path[i]
+            p2 = path[(i + 1) % len(path)]
+            loop_length += ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
+
+        # find stopline distance within one loop
+        running = 0
+        for i in range(len(path)):
+            p1 = path[i]
+            p2 = path[(i + 1) % len(path)]
+            if key in self.approaches[i]:
+                sx, sy = self.stop_point_for(key)
+                if p1[1] == p2[1]:
+                    stopline_in_loop = running + abs(sx - p1[0])
+                else:
+                    stopline_in_loop = running + abs(sy - p1[1])
+
+                # if total_dist provided, return absolute distance to stopline on current lap
+                if total_dist is not None:
+                    current_lap_start = (total_dist // loop_length) * loop_length
+                    return current_lap_start + stopline_in_loop
+                return stopline_in_loop
+
+            length = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
+            running += length
+
+        return None
 
     # return current stopline on approach
     def current_approach(self):
@@ -303,6 +358,7 @@ class Bus:
         self.chassis.target_index = 1
         self.current_leg_index = 0
         self.current_stop_index = 0
+        self.distance_travelled = 0
         self.priority_requested = False
         self.is_late=True
         self.chassis.showturtle()

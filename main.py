@@ -292,6 +292,7 @@ late_bus = Bus(
     controller,
     my_map,
     color="orange",
+    delay=0,
     is_late=True
 )
 
@@ -338,9 +339,7 @@ def start_sim():
     controller.extension_time = extension_slider.get()
 
     # Delay and distance measurements
-    late_bus.delay = delay_slider.get()
-
-    initial_delay_sec = late_bus.delay / 1000
+    initial_delay_sec = delay_slider.get() / 1000
 
     base_shadow_distance = late_bus.go_speed / dt * initial_delay_sec
     scheduled_time = base_shadow_distance / late_bus.go_speed * dt
@@ -379,7 +378,6 @@ def reset_sim():
     base_shadow_distance = late_bus.go_speed / dt * initial_delay_sec
     scheduled_time = base_shadow_distance / late_bus.go_speed * dt
     late_shadow_time = 0
-    shadow_distance = 0
     late_shadow_distance = 0
 
     late_bus.reset()
@@ -402,7 +400,6 @@ def sim_loop():
     late_bus.move()
 
     if late_bus.active:
-
         global sim_time
         global base_shadow_distance
         global late_shadow_distance
@@ -410,24 +407,36 @@ def sim_loop():
         global late_shadow_time
         global display_counter
 
-        sim_time += sim_tick
-        actual_time = sim_time / 1000
+        actual_time = late_bus.distance_travelled / late_bus.go_speed * dt
+
+        baseline_approach = late_bus.get_approach_at_distance(base_shadow_distance)
+        late_shadow_approach = late_bus.get_approach_at_distance(late_shadow_distance)
 
         baseline_red = controller.would_be_red_without_tsp(
-            late_bus.current_approach(),
-            scheduled_time * 1000
+            baseline_approach,
+            sim_time
         )
 
         shadow_red = controller.would_be_red_without_tsp(
-            late_bus.current_approach(),
-            late_shadow_time * 1000
+            late_shadow_approach,
+            sim_time
         )
-
-        if not baseline_red:
-            base_shadow_distance += late_bus.go_speed
 
         if not shadow_red:
             late_shadow_distance += late_bus.go_speed
+        else:
+            key = late_bus.get_approach_at_distance(late_shadow_distance)
+            stopline_dist = late_bus.get_stopline_distance(key, late_shadow_distance) if key else None
+            if stopline_dist is not None and late_shadow_distance <= stopline_dist:
+                late_shadow_distance = min(late_shadow_distance + late_bus.go_speed, stopline_dist)
+
+        if not baseline_red:
+            base_shadow_distance += late_bus.go_speed
+        else:
+            key = late_bus.get_approach_at_distance(base_shadow_distance)
+            stopline_dist = late_bus.get_stopline_distance(key, base_shadow_distance) if key else None
+            if stopline_dist is not None and base_shadow_distance <= stopline_dist:
+                base_shadow_distance = min(base_shadow_distance + late_bus.go_speed, stopline_dist)
 
         scheduled_time = base_shadow_distance / late_bus.go_speed * dt
         late_shadow_time = late_shadow_distance / late_bus.go_speed * dt
@@ -440,11 +449,8 @@ def sim_loop():
 
         display_counter += 1
 
-        if late_bus.is_late and display_counter % 10 == 0:
-
-            if current_delay == 0:
-                late_bus.is_late = False
-
+        if current_delay == 0:
+            late_bus.is_late = False
             recovery_time_var.set(f"{actual_time:.2f}")
 
             current_tsp.set(f"{current_delay:.2f}")
@@ -453,6 +459,16 @@ def sim_loop():
             current_shadow.set(f"{current_shadow_delay:.2f}")
             recovered_shadow.set(f"{recovered_shadow_delay:.2f}")
 
+        if late_bus.is_late and display_counter % 10 == 0:
+            recovery_time_var.set(f"{actual_time:.2f}")
+
+            current_tsp.set(f"{current_delay:.2f}")
+            recovered_tsp.set(f"{recovered_delay:.2f}")
+
+            current_shadow.set(f"{current_shadow_delay:.2f}")
+            recovered_shadow.set(f"{recovered_shadow_delay:.2f}")
+
+    sim_time += sim_tick
     screen.ontimer(sim_loop, sim_tick)
 
 

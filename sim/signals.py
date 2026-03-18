@@ -37,6 +37,8 @@ class SignalController:
     def start(self):
         self.running = True
         self.remaining = self.green_time # phase timer set to green_time
+        self.apply_colors_green_approach_only() # default signal color is red
+        self.apply_colors()
         self.tick()
 
     def reset(self):
@@ -47,6 +49,7 @@ class SignalController:
         self.extension_used = False
         self.remaining = self.green_time
         self.printer.clear()
+        self.apply_colors_green_approach_only()
         self.apply_colors()
 
     def tick(self):
@@ -108,20 +111,31 @@ class SignalController:
 
     # check whether the current stoplight would be red without TSP
     def would_be_red_without_tsp(self, approach, time):
-        phase_length = self.green_time + self.yellow_time # length of one phase
-        cycle_length = phase_length * 2                   # length of one cycle = phase length * number of phases
+        if approach is None:
+            return False
 
-        t = time % cycle_length # based on the current bus time,
-                                # which phase would the light be in?
+        phase_length = self.green_time + self.yellow_time
+        cycle_length = phase_length * 2
 
-        # determine which phase would naturally be active (i.e. "GREEN" or "YELLOW")
-        natural_phase = "NS" if t < phase_length else "EW" # "NS" is the first phase in a cycle
+        t = time % cycle_length
 
-        # get the light on the late bus's approach
+        # determine phase and state at this point in the cycle
+        if t < self.green_time:
+            natural_phase = "NS"
+            natural_state = "GREEN"
+        elif t < phase_length:
+            natural_phase = "NS"
+            natural_state = "YELLOW"
+        elif t < phase_length + self.green_time:
+            natural_phase = "EW"
+            natural_state = "GREEN"
+        else:
+            natural_phase = "EW"
+            natural_state = "YELLOW"
+
         approach_phase = self.approach_phase(approach)
 
-        # if the light is not currently active when it would have been without TSP, return False
-        return approach_phase != natural_phase
+        return approach_phase != natural_phase or natural_state == "YELLOW"
 
     # determine the phase to which each stopline/approach belongs
     def approach_phase(self, approach):
