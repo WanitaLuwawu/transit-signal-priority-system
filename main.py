@@ -449,7 +449,7 @@ def sim_loop():
 
         display_counter += 1
 
-        if current_delay == 0:
+        if late_bus.is_late and current_delay == 0:
             late_bus.is_late = False
             recovery_time_var.set(f"{actual_time:.2f}")
 
