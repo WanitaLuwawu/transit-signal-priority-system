@@ -39,7 +39,6 @@ class SignalController:
         self.remaining = self.green_time # phase timer set to green_time
         self.apply_colors_green_approach_only() # default signal color is red
         self.apply_colors()
-        self.tick()
 
     def reset(self):
         self.running = False
@@ -52,7 +51,7 @@ class SignalController:
         self.apply_colors_green_approach_only()
         self.apply_colors()
 
-    def tick(self):
+    def tick(self, dt):
         if not self.running:
             return
 
@@ -67,10 +66,12 @@ class SignalController:
                 self.printer.clear()
                 self.printer.write("GREEN+", font=("Arial", 14, "bold")) # notify the user of green light extension
 
-            self.remaining -= 100               # reduce green_time
-            self.screen.ontimer(self.tick, 100) # continue countdown to next phase
+            self.remaining -= dt # reduce green_time
         else: # swap phase
-            self.to_yellow()
+            if self.state == "GREEN":
+                self.to_yellow()
+            else:
+                self.swap_phase()
 
     # schedule the next green phase for the end of yellow_time
     def schedule_next(self):
@@ -86,7 +87,6 @@ class SignalController:
         self.remaining = self.green_time                  # phase timer set to green_time
         self.apply_colors_green_approach_only()           # recolor the phases separately to avoid a huge redraw spike
         self.screen.ontimer(self.apply_colors, 25)
-        self.tick()                                       # start countdown to next phase swap
 
     def request_priority(self, approach):
         # only allow requests during GREEN
@@ -146,9 +146,9 @@ class SignalController:
         return None
 
     def to_yellow(self):
-        self.state = "YELLOW"
-        self.apply_colors()
-        self.schedule_next()
+            self.state = "YELLOW"
+            self.remaining = self.yellow_time  # Set timer for the yellow duration
+            self.apply_colors()
 
     def apply_colors(self):
             # the active phase is either green or yellow

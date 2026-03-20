@@ -122,28 +122,6 @@ class Bus:
 
         return path # return original path if something went wrong
 
-    def get_approach_at_distance(self, total_dist):
-        path = self.chassis.path
-
-        leg_lengths = []
-        for i in range(len(path)):
-            p1 = path[i]
-            p2 = path[(i + 1) % len(path)]
-            length = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
-            leg_lengths.append(length)
-
-        full_loop_length = sum(leg_lengths)
-        distance_in_loop = total_dist % full_loop_length
-
-        running_dist = 0
-        for i, leg_len in enumerate(leg_lengths):
-            if running_dist <= distance_in_loop < running_dist + leg_len:
-                leg_approaches = self.approaches[i]
-                return leg_approaches[0] if leg_approaches else None
-            running_dist += leg_len
-
-        return None
-
     def infer_approaches(self):
         path = self.chassis.path               # bus path
         approaches = []                        # empty list of approaches
@@ -219,39 +197,6 @@ class Bus:
         t = self.stoplines[key]
         return t.xcor(), t.ycor()
 
-    def get_stopline_distance(self, key, total_dist=None):
-        path = self.chassis.path
-
-        # compute full loop length
-        loop_length = 0
-        for i in range(len(path)):
-            p1 = path[i]
-            p2 = path[(i + 1) % len(path)]
-            loop_length += ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
-
-        # find stopline distance within one loop
-        running = 0
-        for i in range(len(path)):
-            p1 = path[i]
-            p2 = path[(i + 1) % len(path)]
-            if key in self.approaches[i]:
-                sx, sy = self.stop_point_for(key)
-                if p1[1] == p2[1]:
-                    stopline_in_loop = running + abs(sx - p1[0])
-                else:
-                    stopline_in_loop = running + abs(sy - p1[1])
-
-                # if total_dist provided, return absolute distance to stopline on current lap
-                if total_dist is not None:
-                    current_lap_start = (total_dist // loop_length) * loop_length
-                    return current_lap_start + stopline_in_loop
-                return stopline_in_loop
-
-            length = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
-            running += length
-
-        return None
-
     # return current stopline on approach
     def current_approach(self):
         leg = self.approaches[self.current_leg_index]
@@ -305,7 +250,8 @@ class Bus:
             self.delay -= 20        # lateness is simulated by "delay"
             if self.delay <= 0:     # the bus starts moving when delay == 0
                 self.active = True
-            return
+            else:
+                return
 
         bus = self.chassis          # bus Turtle
 
@@ -335,10 +281,12 @@ class Bus:
 
         if dist_to_target < self.go_speed:                                               # if near the target node...
             bus.goto(tx, ty)                                                             # snap to fit
+            self.distance_travelled += self.step
             bus.target_index = (bus.target_index + 1) % len(bus.path)                    # advance to next node
             self.current_leg_index = (self.current_leg_index + 1) % len(self.approaches) # advance to next path segment
             self.current_stop_index = 0                                                  # first stopline on new segment
             self.priority_requested = False                                              # reset priority request for new segment
+            self.controller.printer.clear()
             return
 
         # set the travel direction
@@ -362,3 +310,85 @@ class Bus:
         self.priority_requested = False
         self.is_late=True
         self.chassis.showturtle()
+
+    # Virtual Bus Functions
+
+    def get_approach_at_distance(self, total_dist):
+        path = self.chassis.path
+
+        leg_lengths = []
+        for i in range(len(path)):
+            p1 = path[i]
+            p2 = path[(i + 1) % len(path)]
+            length = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
+            leg_lengths.append(length)
+
+        full_loop_length = sum(leg_lengths)
+        distance_in_loop = total_dist % full_loop_length
+
+        running_dist = 0
+        for i, leg_len in enumerate(leg_lengths):
+            if running_dist <= distance_in_loop < running_dist + leg_len:
+                leg_approaches = self.approaches[i]
+                return leg_approaches[0] if leg_approaches else None
+            running_dist += leg_len
+
+        return None
+
+    def get_stopline_distance(self, key, total_dist=None):
+        path = self.chassis.path
+
+        # compute full loop length
+        loop_length = 0
+        for i in range(len(path)):
+            p1 = path[i]
+            p2 = path[(i + 1) % len(path)]
+            loop_length += ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
+
+        # find stopline distance within one loop
+        running = 0
+        for i in range(len(path)):
+            p1 = path[i]
+            p2 = path[(i + 1) % len(path)]
+            if key in self.approaches[i]:
+                sx, sy = self.stop_point_for(key)
+                if p1[1] == p2[1]:
+                    stopline_in_loop = running + abs(sx - p1[0])
+                else:
+                    stopline_in_loop = running + abs(sy - p1[1])
+
+                # if total_dist provided, return absolute distance to stopline on current lap
+                if total_dist is not None:
+                    current_lap_start = (total_dist // loop_length) * loop_length
+                    return current_lap_start + stopline_in_loop
+                return stopline_in_loop
+
+            length = ((p2[0] - p1[0]) ** 2 + (p2[1] - p1[1]) ** 2) ** 0.5
+            running += length
+
+        return None
+
+    def get_shadow_speed(self, shadow_distance, signal_red):
+        key = self.get_approach_at_distance(shadow_distance)
+        if not key:
+            return self.go_speed
+
+        stopline_abs = self.get_stopline_distance(key, shadow_distance)
+        if stopline_abs is None:
+            return self.go_speed
+
+        dist_to_stop = stopline_abs - shadow_distance
+
+        if signal_red:
+            if dist_to_stop <= 0:
+                return 0  # already at or past stopline while red — hold position
+            elif dist_to_stop <= self.stop_zone:
+                return 0
+            elif dist_to_stop <= self.slow_zone:
+                # clamp so we don't overshoot stop_zone in one tick
+                return min(self.slow_speed, dist_to_stop - self.stop_zone)
+            else:
+                # clamp so we don't overshoot slow_zone in one tick
+                return min(self.go_speed, dist_to_stop - self.stop_zone)
+        else:
+            return self.go_speed

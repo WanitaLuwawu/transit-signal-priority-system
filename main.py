@@ -164,38 +164,38 @@ tk.Radiobutton(
 
 green_slider = tk.Scale(
     control_frame,
-    from_=1000, to=8000, resolution=100,
+    from_=500, to=5000, resolution=100,
     orient="horizontal",
     label="Green Time (ms)"
 )
-green_slider.set(4000)
+green_slider.set(2000)
 green_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 yellow_slider = tk.Scale(
     control_frame,
-    from_=1000, to=8000, resolution=100,
+    from_=500, to=5000, resolution=100,
     orient="horizontal",
     label="Yellow Time (ms)"
 )
-yellow_slider.set(2000)
+yellow_slider.set(1000)
 yellow_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 extension_slider = tk.Scale(
     control_frame,
-    from_=1000, to=8000, resolution=100,
+    from_=0, to=5000, resolution=100,
     orient="horizontal",
     label="TSP Extension (ms)"
 )
-extension_slider.set(2500)
+extension_slider.set(1500)
 extension_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 delay_slider = tk.Scale(
     control_frame,
-    from_=0, to=60000, resolution=500,
+    from_=0, to=30000, resolution=500,
     orient="horizontal",
     label="Late Bus Delay (ms)"
 )
-delay_slider.set(10000)
+delay_slider.set(5000)
 delay_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 # Results Table
@@ -281,12 +281,11 @@ sim_tick = 20
 dt = sim_tick / 1000
 
 initial_delay = 0
-initial_delay_sec = initial_delay / 1000
+initial_delay_sec = 0
 
 display_counter = 0
 
 # Bus initialization
-
 late_bus = Bus(
     screen,
     controller,
@@ -297,25 +296,20 @@ late_bus = Bus(
 )
 
 # Shadow bus initialization
-
 base_shadow_distance = 0
 scheduled_time = 0
 late_shadow_distance = 0
 late_shadow_time = 0
+base_shadow_clock_time = 0
+late_shadow_clock_time = 0
 
-
-# Start simulation
 def start_sim():
-
     global sim_running
-    global initial_delay_sec
-    global base_shadow_distance
-    global scheduled_time
 
-    if len(selected_path) != 4: # if the user has not selected 4 nodes, do not proceed
+    if len(selected_path) != 4:
         return
 
-    if sim_running: # if the sim is already running, don't proceed
+    if sim_running:
         return
 
     # Get selected path and initialize bus pos
@@ -330,7 +324,7 @@ def start_sim():
     late_bus.approaches = late_bus.infer_approaches()
     late_bus.current_leg_index = 0
     late_bus.current_stop_index = 0
-    late_bus.active = False
+    late_bus.active = True
     late_bus.priority_requested = False
 
     # Set signal times
@@ -338,50 +332,55 @@ def start_sim():
     controller.yellow_time = yellow_slider.get()
     controller.extension_time = extension_slider.get()
 
-    # Delay and distance measurements
-    initial_delay_sec = delay_slider.get() / 1000
+    global initial_delay_sec, initial_delay
+    initial_delay = delay_slider.get()
+    initial_delay_sec = initial_delay / 1000.0
 
-    base_shadow_distance = late_bus.go_speed / dt * initial_delay_sec
-    scheduled_time = base_shadow_distance / late_bus.go_speed * dt
-
-    # Update display
     initial_tsp.set(f"{initial_delay_sec:.2f}")
     initial_shadow.set(f"{initial_delay_sec:.2f}")
 
-    # Start signals
-    controller.start()
+    global base_shadow_distance, late_shadow_distance
+    base_shadow_distance = initial_delay / sim_tick * late_bus.go_speed
+    late_shadow_distance = 0
+
+    # The baseline clock starts at 5.0s, the late buses start at 0.0s
+    global base_shadow_clock_time, late_shadow_clock_time, sim_time
+    sim_time = 0
+    base_shadow_clock_time = 0              # ms for controller
+    late_shadow_clock_time = 0              # ms for controller
 
     sim_running = True
+    controller.start()
     sim_loop()
 
-# Reset simulation
 def reset_sim():
-
     global sim_running
-    global sim_time
-    global actual_time
-    global scheduled_time
-    global late_shadow_time
-    global base_shadow_distance
-    global shadow_distance
-    global late_shadow_distance
 
     sim_running = False
+
+    # Reset distances
+    global base_shadow_distance, late_shadow_distance
+    base_shadow_distance = 0  # Will be recalculated in start_sim
+    late_shadow_distance = 0
+
+    # Reset clocks
+    global base_shadow_clock_time, late_shadow_clock_time, sim_time
     sim_time = 0
+    base_shadow_clock_time = 0
+    late_shadow_clock_time = 0
+
+    # Reset timers
+    global actual_time, scheduled_time, late_shadow_time, base_shadow_time
+    actual_time = 0
+    scheduled_time = 0
+    late_shadow_time = 0
 
     selected_path.clear()
 
     for btn in node_buttons.values():
         btn.config(bg="white", state="normal")
 
-    actual_time = 0
-    base_shadow_distance = late_bus.go_speed / dt * initial_delay_sec
-    scheduled_time = base_shadow_distance / late_bus.go_speed * dt
-    late_shadow_time = 0
-    late_shadow_distance = 0
-
     late_bus.reset()
-
     controller.reset()
 
     recovery_time_var.set("0.00")
@@ -390,54 +389,39 @@ def reset_sim():
     current_shadow.set("0.00")
     recovered_shadow.set("0.00")
 
-
 # Loop simulation
 def sim_loop():
 
-    if not sim_running: # Do not proceed until the user clicks "Start"
+    if not sim_running:
         return
 
+    controller.tick(sim_tick)
     late_bus.move()
 
     if late_bus.active:
         global sim_time
+        global base_shadow_clock_time
+        global late_shadow_clock_time
         global base_shadow_distance
         global late_shadow_distance
+        global actual_time
         global scheduled_time
         global late_shadow_time
         global display_counter
 
-        actual_time = late_bus.distance_travelled / late_bus.go_speed * dt
+        sim_time += sim_tick
+        base_shadow_clock_time += sim_tick
+        late_shadow_clock_time += sim_tick
 
         baseline_approach = late_bus.get_approach_at_distance(base_shadow_distance)
+        baseline_red = controller.would_be_red_without_tsp(baseline_approach, base_shadow_clock_time)
+        base_shadow_distance += late_bus.get_shadow_speed(base_shadow_distance, baseline_red)
+
         late_shadow_approach = late_bus.get_approach_at_distance(late_shadow_distance)
+        shadow_red = controller.would_be_red_without_tsp(late_shadow_approach, late_shadow_clock_time)
+        late_shadow_distance += late_bus.get_shadow_speed(late_shadow_distance, shadow_red)
 
-        baseline_red = controller.would_be_red_without_tsp(
-            baseline_approach,
-            sim_time
-        )
-
-        shadow_red = controller.would_be_red_without_tsp(
-            late_shadow_approach,
-            sim_time
-        )
-
-        if not shadow_red:
-            late_shadow_distance += late_bus.go_speed
-        else:
-            key = late_bus.get_approach_at_distance(late_shadow_distance)
-            stopline_dist = late_bus.get_stopline_distance(key, late_shadow_distance) if key else None
-            if stopline_dist is not None and late_shadow_distance <= stopline_dist:
-                late_shadow_distance = min(late_shadow_distance + late_bus.go_speed, stopline_dist)
-
-        if not baseline_red:
-            base_shadow_distance += late_bus.go_speed
-        else:
-            key = late_bus.get_approach_at_distance(base_shadow_distance)
-            stopline_dist = late_bus.get_stopline_distance(key, base_shadow_distance) if key else None
-            if stopline_dist is not None and base_shadow_distance <= stopline_dist:
-                base_shadow_distance = min(base_shadow_distance + late_bus.go_speed, stopline_dist)
-
+        actual_time = late_bus.distance_travelled / late_bus.go_speed * dt
         scheduled_time = base_shadow_distance / late_bus.go_speed * dt
         late_shadow_time = late_shadow_distance / late_bus.go_speed * dt
 
@@ -468,9 +452,7 @@ def sim_loop():
             current_shadow.set(f"{current_shadow_delay:.2f}")
             recovered_shadow.set(f"{recovered_shadow_delay:.2f}")
 
-    sim_time += sim_tick
     screen.ontimer(sim_loop, sim_tick)
-
 
 # Buttons
 button_frame = tk.Frame(control_frame, bg="#f2f2f2")
