@@ -240,7 +240,7 @@ class Bus:
         # 1. bus is late
         # 2. bus has not already requested priority on this path segment
         # 3. bus is within the request zone
-        if self.is_late and not self.priority_requested and self.stop_zone < dist < 100:
+        if self.is_late and not self.priority_requested and self.stop_zone < dist < self.slow_zone:
             if approach and self.controller.request_priority(approach):
                 self.priority_requested = True
 
@@ -281,7 +281,6 @@ class Bus:
 
         if dist_to_target < self.go_speed:                                               # if near the target node...
             bus.goto(tx, ty)                                                             # snap to fit
-            self.distance_travelled += self.step
             bus.target_index = (bus.target_index + 1) % len(bus.path)                    # advance to next node
             self.current_leg_index = (self.current_leg_index + 1) % len(self.approaches) # advance to next path segment
             self.current_stop_index = 0                                                  # first stopline on new segment

@@ -10,6 +10,7 @@ class SignalController:
         self.yellow_time = 2000
         self.extension_time = 2500
         self.remaining = self.green_time
+        self.time_debt = 0
 
         # State
         self.phase = "NS"               # "NS" or "EW"
@@ -47,6 +48,7 @@ class SignalController:
         self.priority_requested = False
         self.extension_used = False
         self.remaining = self.green_time
+        self.time_debt = 0
         self.printer.clear()
         self.apply_colors_green_approach_only()
         self.apply_colors()
@@ -59,10 +61,10 @@ class SignalController:
             # check whether conditions for green light extension have been met:
             # 1. priority has been requested
             # 2. an extension has not been used during this phase
-            if self.priority_requested and not self.extension_used:
+            if self.priority_requested and not self.extension_used and self.remaining < self.yellow_time + 200:
                 self.remaining += self.extension_time # extend green_time
                 self.extension_used = True            # do not allow another extension during this phase
-
+                self.time_debt += self.extension_time # increment borrowed green time
                 self.printer.clear()
                 self.printer.write("GREEN+", font=("Arial", 14, "bold")) # notify the user of green light extension
 
@@ -84,7 +86,12 @@ class SignalController:
         self.priority_requested = False                   # set active phase priority to default state
         self.extension_used = False
         self.printer.clear()                              # clear previous output
-        self.remaining = self.green_time                  # phase timer set to green_time
+
+        # Apply time debt recovery
+        reduction = min(self.time_debt, self.green_time * 0.2)  # cap reduction (avoid zero/negative greens)
+        self.remaining = self.green_time - reduction
+        self.time_debt -= reduction
+
         self.apply_colors_green_approach_only()           # recolor the phases separately to avoid a huge redraw spike
         self.screen.ontimer(self.apply_colors, 25)
 

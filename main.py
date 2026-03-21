@@ -164,20 +164,20 @@ tk.Radiobutton(
 
 green_slider = tk.Scale(
     control_frame,
-    from_=500, to=5000, resolution=100,
+    from_=100, to=5000, resolution=100,
     orient="horizontal",
     label="Green Time (ms)"
 )
-green_slider.set(2000)
+green_slider.set(1200)
 green_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 yellow_slider = tk.Scale(
     control_frame,
-    from_=500, to=5000, resolution=100,
+    from_=100, to=5000, resolution=100,
     orient="horizontal",
     label="Yellow Time (ms)"
 )
-yellow_slider.set(1000)
+yellow_slider.set(500)
 yellow_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 extension_slider = tk.Scale(
@@ -186,7 +186,7 @@ extension_slider = tk.Scale(
     orient="horizontal",
     label="TSP Extension (ms)"
 )
-extension_slider.set(1500)
+extension_slider.set(700)
 extension_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 delay_slider = tk.Scale(
