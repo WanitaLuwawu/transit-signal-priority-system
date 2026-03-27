@@ -1,5 +1,12 @@
 import turtle
 import tkinter as tk
+import tkinter.ttk as ttk
+
+import matplotlib
+matplotlib.use("TkAgg")
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.ticker
 
 from sim.map import Map
 from sim.signals import SignalController
@@ -15,12 +22,9 @@ screen = turtle.Screen()
 screen.setup(800, 800)
 screen.title("Transit Signal Priority Simulation")
 
-turtle.listen()
-turtle.onkey(close_window, "Escape")
-
 root = screen._root
 root.attributes('-fullscreen', True)
-
+root.bind("<Escape>", lambda e: turtle.bye())
 
 # Layout
 
@@ -31,8 +35,38 @@ control_frame.pack_propagate(False)
 canvas = screen.getcanvas()
 canvas.pack(side="right", fill="both", expand=True)
 
+notebook = ttk.Notebook(control_frame)
+notebook.pack(fill="both", expand=True, padx=15, pady=5)
+
+grid_controls = tk.Frame(notebook, bg="#f2f2f2")
+notebook.add(grid_controls, text="Controls")
+
+plot_tab = tk.Frame(notebook)
+notebook.add(plot_tab, text="Live Plot")
+
+# Live plot
+fig = Figure(figsize=(5, 4), dpi=100)
+ax = fig.add_subplot(111)
+
+ax.set_xlabel("Simulation Time (s)", fontweight="bold", fontfamily="Arial", fontsize=12, labelpad=10)
+ax.set_ylabel("Delay (s)", fontweight="bold", fontfamily="Arial", fontsize=12)
+ax.set_title("Delay Recovery", fontweight="bold", fontfamily="Arial", fontsize=12)
+
+line_tsp,    = ax.plot([], [], label="With TSP",    color="blue")
+line_shadow, = ax.plot([], [], label="Without TSP", color="red")
+ax.legend()
+
+ax.spines["top"].set_visible(False)
+ax.spines["right"].set_visible(False)
+ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+ax.xaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+
+plot_canvas = FigureCanvasTkAgg(fig, master=plot_tab)
+plot_canvas.get_tk_widget().pack(fill="both", expand=True)
+fig.tight_layout()
+
 title = tk.Label(
-    control_frame,
+    grid_controls,
     text="Transit Signal Priority",
     font=("Arial", 16, "bold"),
     bg="#f2f2f2"
@@ -41,7 +75,7 @@ title.pack(pady=(20,10))
 
 # UI controls (path selection)
 path_frame = tk.LabelFrame(
-    control_frame,
+    grid_controls,
     text="Bus Path (select 4 nodes)",
     font=("Arial", 12, "bold"),
     padx=10,
@@ -51,7 +85,7 @@ path_frame = tk.LabelFrame(
 path_frame.pack(fill="x", padx=15, pady=5)
 
 controls_frame = tk.LabelFrame(
-    control_frame,
+    grid_controls,
     text="Signal Settings",
     font=("Arial", 12, "bold"),
     padx=10,
@@ -79,6 +113,7 @@ adjacent = {      # list of nodes adjacent to each node:
 start_nodes = {1,3,7,9} # a path cannot start at an intersection; these are the only starting nodes
 
 # Verify node selection
+
 def select_node(node):
 
     if len(selected_path) == 0:# if a node has not yet been selected, the selected node is the first node
@@ -163,7 +198,7 @@ tk.Radiobutton(
 # UI controls (sliders)
 
 green_slider = tk.Scale(
-    control_frame,
+    grid_controls,
     from_=100, to=5000, resolution=100,
     orient="horizontal",
     label="Green Time (ms)"
@@ -172,7 +207,7 @@ green_slider.set(1200)
 green_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 yellow_slider = tk.Scale(
-    control_frame,
+    grid_controls,
     from_=100, to=5000, resolution=100,
     orient="horizontal",
     label="Yellow Time (ms)"
@@ -181,7 +216,7 @@ yellow_slider.set(500)
 yellow_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 extension_slider = tk.Scale(
-    control_frame,
+    grid_controls,
     from_=0, to=5000, resolution=100,
     orient="horizontal",
     label="TSP Extension (ms)"
@@ -190,7 +225,7 @@ extension_slider.set(700)
 extension_slider.pack(in_=controls_frame, pady=8, fill="x")
 
 delay_slider = tk.Scale(
-    control_frame,
+    grid_controls,
     from_=0, to=30000, resolution=500,
     orient="horizontal",
     label="Late Bus Delay (ms)"
@@ -201,7 +236,7 @@ delay_slider.pack(in_=controls_frame, pady=8, fill="x")
 # Results Table
 
 results_frame = tk.LabelFrame(
-    control_frame,
+    grid_controls,
     text="Simulation Results",
     font=("Arial", 12, "bold"),
     padx=10,
@@ -284,6 +319,10 @@ initial_delay = 0
 initial_delay_sec = 0
 
 display_counter = 0
+
+plot_times = []
+plot_delay_tsp = []
+plot_delay_shadow = []
 
 # Bus initialization
 late_bus = Bus(
@@ -383,6 +422,28 @@ def reset_sim():
     late_bus.reset()
     controller.reset()
 
+    global line_tsp, line_shadow
+
+    # Reset plot
+
+    plot_times.clear()
+    plot_delay_tsp.clear()
+    plot_delay_shadow.clear()
+    ax.cla()
+    ax.set_xlabel("Simulation Time (s)", fontweight="bold", fontfamily="Arial", fontsize=12, labelpad=10)
+    ax.set_ylabel("Delay (s)", fontweight="bold", fontfamily="Arial", fontsize=12)
+    ax.set_title("Delay Recovery", fontweight="bold", fontfamily="Arial", fontsize=12)
+    line_tsp, = ax.plot([], [], label="With TSP", color="blue")
+    line_shadow, = ax.plot([], [], label="Without TSP", color="red")
+    ax.legend()
+    ax.legend()
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.yaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+    ax.xaxis.set_major_formatter(matplotlib.ticker.FormatStrFormatter('%.2f'))
+    fig.tight_layout()
+    plot_canvas.draw()
+
     recovery_time_var.set("0.00")
     current_tsp.set("0.00")
     recovered_tsp.set("0.00")
@@ -433,9 +494,20 @@ def sim_loop():
 
         display_counter += 1
 
+        if late_bus.is_late and display_counter % 5 == 0:
+            plot_times.append(sim_time/1000)
+            plot_delay_tsp.append(current_delay)
+            plot_delay_shadow.append(current_shadow_delay)
+
+            line_tsp.set_data(plot_times, plot_delay_tsp)
+            line_shadow.set_data(plot_times, plot_delay_shadow)
+            ax.relim()
+            ax.autoscale_view()
+            plot_canvas.draw()
+
         if late_bus.is_late and current_delay == 0:
             late_bus.is_late = False
-            recovery_time_var.set(f"{actual_time:.2f}")
+            recovery_time_var.set(f"{sim_time/1000:.2f}")
 
             current_tsp.set(f"{current_delay:.2f}")
             recovered_tsp.set(f"{recovered_delay:.2f}")
@@ -444,7 +516,7 @@ def sim_loop():
             recovered_shadow.set(f"{recovered_shadow_delay:.2f}")
 
         if late_bus.is_late and display_counter % 10 == 0:
-            recovery_time_var.set(f"{actual_time:.2f}")
+            recovery_time_var.set(f"{sim_time/1000:.2f}")
 
             current_tsp.set(f"{current_delay:.2f}")
             recovered_tsp.set(f"{recovered_delay:.2f}")
@@ -456,7 +528,10 @@ def sim_loop():
 
 # Buttons
 button_frame = tk.Frame(control_frame, bg="#f2f2f2")
-button_frame.pack(side="bottom", fill="x", pady=15)
+button_frame.pack(side="bottom", fill="x", pady=10)
+
+button_frame.columnconfigure(0, weight=1)
+button_frame.columnconfigure(1, weight=1)
 
 start_btn = tk.Button(
     button_frame,
@@ -464,7 +539,6 @@ start_btn = tk.Button(
     command=start_sim,
     width=10
 )
-start_btn.pack(in_=button_frame, pady=6)
 
 reset_btn = tk.Button(
     button_frame,
@@ -472,7 +546,17 @@ reset_btn = tk.Button(
     command=reset_sim,
     width=10
 )
-reset_btn.pack(in_=button_frame, pady=6)
+
+minimise_btn = tk.Button(
+    button_frame,
+    text="Minimise",
+    command=lambda: root.iconify(),
+    width=10
+)
+
+start_btn.grid(row=0, column=0, padx=5, pady=2)
+reset_btn.grid(row=0, column=1, padx=5, pady=2)
+minimise_btn.grid(row=1, column=0, columnspan=2, pady=2)
 
 # Start program
 turtle.mainloop()
