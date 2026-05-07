@@ -203,12 +203,22 @@ The control panel on the left side of the screen allows the user to configure th
     * TSP Extension - duration of the green extension granted by TSP (ms)
 4. Late Bus Delay
     * The initial delay of the late bus at the start of the simulation (ms)
-
+5. Simulation Results
+    * Displays the recovery time and a delay comparison table for the bus with and without TSP
+   
+### Live Plot Tab
+ 
+Displays a real-time plot of delay (seconds) against simulation time (seconds) for both the late bus
+with TSP and the late shadow without TSP, allowing the effect of signal priority to be observed as
+the simulation runs.
+ 
 ## Technologies Used
-
+ 
 - Python
 - Turtle Graphics
 - Tkinter
+- Matplotlib
+
 
 ## Possible Future Improvements
 
@@ -220,6 +230,7 @@ The control panel on the left side of the screen allows the user to configure th
 
 Requirements:
 - Python 3.x
+- Matplotlib
 
 From the project directory, run:
 - python main.py
